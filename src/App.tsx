@@ -405,7 +405,10 @@ export default function App() {
         if (err.code === 'auth/invalid-credential') msg = "E-mail ou senha incorretos.";
         if (err.code === 'auth/weak-password') msg = "A senha deve ter pelo menos 6 caracteres.";
         if (err.code === 'auth/invalid-email') msg = "E-mail inválido.";
-        if (err.message) msg = err.message;
+        if (err.code === 'auth/operation-not-allowed') {
+          msg = "O cadastro por E-mail/Senha não está ativado no Console do Firebase. Ative-o em Authentication > Sign-in method.";
+        }
+        if (err.message && !msg.includes('Console')) msg = err.message;
         setAuthError(msg);
       } finally {
         setIsAuthExecuting(false);
@@ -418,7 +421,16 @@ export default function App() {
       try {
         await loginWithGoogle();
       } catch (err: any) {
-        setAuthError("Erro ao entrar com Google. Tente novamente.");
+        console.error("Google Login Detail:", err);
+        let msg = "Erro ao entrar com Google. Tente novamente.";
+        if (err.code === 'auth/unauthorized-domain') {
+          msg = "Domínio não autorizado. Adicione este domínio no Console do Firebase > Authentication > Settings.";
+        } else if (err.code === 'auth/popup-closed-by-user') {
+          msg = "O login foi cancelado (janela fechada).";
+        } else if (err.message) {
+          msg = `Erro: ${err.message}`;
+        }
+        setAuthError(msg);
       } finally {
         setIsAuthExecuting(false);
       }
@@ -540,10 +552,13 @@ export default function App() {
             </button>
           </div>
 
-          <div className="pt-8 border-t border-[#141414]/10">
+          <div className="pt-8 border-t border-[#141414]/10 flex flex-col gap-2">
             <span className="text-[9px] opacity-40 uppercase font-bold tracking-widest leading-tight">
               Acesso restrito. Protocolos de criptografia AES-256 e SSL ativo. Seus dados estão seguros na nuvem operacional.
             </span>
+            <div className="bg-yellow-50 border border-yellow-100 p-2 rounded text-[8px] font-bold uppercase tracking-wider text-yellow-700">
+              Dica: Para o login funcionar em "{window.location.hostname}", certifique-se que este domínio (e também "cczmslnd27l89v7dkt9wjwrr.145.223.92.165.sslip.io") está na lista de 'Domínios Autorizados' no Console do Firebase.
+            </div>
           </div>
         </div>
       </div>
