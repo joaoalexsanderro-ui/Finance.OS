@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "Bank": {
+      "title": "Bank",
+      "description": "Represents a bank account or cash fund",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "balance": { "type": "number" },
+        "color": { "type": "string" }
+      },
+      "required": ["name", "balance", "color"]
+    },
+    "CreditCard": {
+      "title": "CreditCard",
+      "description": "Represents a credit card",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "limit": { "type": "number" },
+        "used": { "type": "number" },
+        "closingDay": { "type": "number" },
+        "dueDate": { "type": "number" },
+        "color": { "type": "string" }
+      },
+      "required": ["name", "limit", "used", "closingDay", "dueDate", "color"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "Financial goal or savings target",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "color": { "type": "string" }
+      },
+      "required": ["name", "targetAmount", "currentAmount", "color"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial transaction (payable, receivable, or transfer)",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["payable", "receivable", "transfer"] },
+        "status": { "type": "string", "enum": ["paid", "pending"] },
+        "bankId": { "type": "string" },
+        "cardId": { "type": "string" },
+        "toBankId": { "type": "string" },
+        "toGoalId": { "type": "string" },
+        "category": { "type": "string" },
+        "isCardBillPayment": { "type": "boolean" }
+      },
+      "required": ["date", "description", "amount", "type", "status", "category"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/banks/{bankId}": {
+      "schema": "Bank",
+      "description": "User bank accounts"
+    },
+    "/users/{userId}/cards/{cardId}": {
+      "schema": "CreditCard",
+      "description": "User credit cards"
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "User savings goals"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User transactions"
+    }
+  }
+}
