@@ -1,0 +1,6 @@
+{
+  "name": "Finanças Pro",
+  "description": "Sistema de controle financeiro completo com gestão de contas, cartões, extrato e transferências.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
