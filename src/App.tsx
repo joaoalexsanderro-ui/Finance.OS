@@ -16,7 +16,7 @@ import BankAndCardSection from './components/BankAndCardSection';
 import GoalsSection from './components/GoalsSection';
 import TransactionTable from './components/TransactionTable';
 import { Modal, TransactionForm, BankForm, CardForm, GoalForm } from './components/Modals';
-import { auth, loginWithGoogle, logout } from './lib/firebase';
+import { auth, loginWithGoogle, logout, loginWithEmail, registerWithEmail } from './lib/firebase';
 import { 
   subscribeToData, 
   saveBank, 
@@ -29,6 +29,7 @@ import {
   deleteTransactionDoc 
 } from './services/firebaseService';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { Mail, Lock, User as UserIconAlt, AlertTriangle } from 'lucide-react';
 
 const INITIAL_STATE: FinancialState = {
   banks: [],
@@ -41,6 +42,16 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [state, setState] = useState<FinancialState>(INITIAL_STATE);
+
+  // Auth UI State
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthExecuting, setIsAuthExecuting] = useState(false);
+  const [hasLocalData, setHasLocalData] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   const [activeModal, setActiveModal] = useState<'none' | 'bank' | 'card' | 'transaction' | 'goal'>('none');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions'>('dashboard');
@@ -69,8 +80,48 @@ export default function App() {
     const unsubscribe = subscribeToData((data) => {
       setState(data);
     });
+
+    // Check for local data to migrate
+    const saved = localStorage.getItem('finances_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.banks?.length || parsed.transactions?.length) {
+          setHasLocalData(true);
+        }
+      } catch (e) {
+        console.error("Error parsing local data", e);
+      }
+    }
+
     return () => unsubscribe();
   }, [user]);
+
+  const migrateLocalData = async () => {
+    if (!user || isMigrating) return;
+    setIsMigrating(true);
+    try {
+      const saved = localStorage.getItem('finances_v1');
+      if (!saved) return;
+      const localState: FinancialState = JSON.parse(saved);
+      
+      // Migrate everything
+      for (const bank of localState.banks) await saveBank(bank);
+      for (const card of localState.cards) await saveCard(card);
+      for (const goal of localState.goals || []) await saveGoal(goal);
+      for (const trans of localState.transactions) await saveTransaction(trans);
+      
+      // Success - clear local data
+      localStorage.removeItem('finances_v1');
+      setHasLocalData(false);
+      alert("Dados migrados com sucesso para o Firebase!");
+    } catch (error) {
+      console.error("Migration failed:", error);
+      alert("Erro ao migrar dados. Tente novamente.");
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   const handleCloseModal = () => {
     setActiveModal('none');
@@ -337,9 +388,45 @@ export default function App() {
   }
 
   if (!user) {
+    const handleAuth = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setAuthError(null);
+      setIsAuthExecuting(true);
+      try {
+        if (authMode === 'register') {
+          if (!name) throw new Error("Nome é obrigatório");
+          await registerWithEmail(email, password, name);
+        } else {
+          await loginWithEmail(email, password);
+        }
+      } catch (err: any) {
+        let msg = "Erro ao autenticar. Verifique seus dados.";
+        if (err.code === 'auth/email-already-in-use') msg = "Este e-mail já está em uso.";
+        if (err.code === 'auth/invalid-credential') msg = "E-mail ou senha incorretos.";
+        if (err.code === 'auth/weak-password') msg = "A senha deve ter pelo menos 6 caracteres.";
+        if (err.code === 'auth/invalid-email') msg = "E-mail inválido.";
+        if (err.message) msg = err.message;
+        setAuthError(msg);
+      } finally {
+        setIsAuthExecuting(false);
+      }
+    };
+
+    const handleGoogleLogin = async () => {
+      setAuthError(null);
+      setIsAuthExecuting(true);
+      try {
+        await loginWithGoogle();
+      } catch (err: any) {
+        setAuthError("Erro ao entrar com Google. Tente novamente.");
+      } finally {
+        setIsAuthExecuting(false);
+      }
+    };
+
     return (
       <div className="min-h-screen bg-[#E4E3E0] flex items-center justify-center p-8">
-        <div className="w-full max-w-md bg-white border border-[#141414] p-12 flex flex-col gap-8 shadow-[12px_12px_0px_0px_#141414]">
+        <div className="w-full max-w-md bg-white border border-[#141414] p-10 flex flex-col gap-8 shadow-[12px_12px_0px_0px_#141414]">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-8 h-8 bg-[#141414] flex items-center justify-center">
@@ -348,37 +435,115 @@ export default function App() {
               <h1 className="text-3xl font-bold tracking-tighter uppercase">FINANCE.OS</h1>
             </div>
             <p className="text-xs opacity-50 uppercase font-bold tracking-widest leading-relaxed">
-              Pronto para transformar sua gestão financeira em uma experiência de alta performance?
+              {authMode === 'login' ? 'Acesse o console de alta performance.' : 'Crie seu perfil operacional no sistema.'}
             </p>
           </div>
-          
-          <div className="flex flex-col gap-4">
+
+          <form onSubmit={handleAuth} className="flex flex-col gap-4">
+            {authMode === 'register' && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40">Nome de Operador</label>
+                <div className="relative">
+                  <UserIconAlt className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={14} />
+                  <input 
+                    type="text" 
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    required
+                    placeholder="JOÃO SILVA"
+                    className="w-full bg-[#F2F1EF] border border-[#141414]/10 h-10 pl-10 pr-4 text-[11px] font-bold uppercase placeholder:opacity-20 focus:outline-none focus:border-[#141414] transition-colors"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase font-bold tracking-widest opacity-40">Endereço de E-mail</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={14} />
+                <input 
+                  type="email" 
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  placeholder="EXTERNO@SISTEMA.COM"
+                  className="w-full bg-[#F2F1EF] border border-[#141414]/10 h-10 pl-10 pr-4 text-[11px] font-bold uppercase placeholder:opacity-20 focus:outline-none focus:border-[#141414] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase font-bold tracking-widest opacity-40">Senha de Acesso</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={14} />
+                <input 
+                  type="password" 
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  className="w-full bg-[#F2F1EF] border border-[#141414]/10 h-10 pl-10 pr-4 text-[11px] font-bold placeholder:opacity-20 focus:outline-none focus:border-[#141414] transition-colors"
+                />
+              </div>
+            </div>
+
+            {authError && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 p-3 text-red-600 text-[10px] font-bold uppercase tracking-widest">
+                <AlertTriangle size={14} />
+                {authError}
+              </div>
+            )}
+
             <button 
-              onClick={loginWithGoogle}
-              className="group flex items-center justify-center gap-3 bg-[#141414] text-white py-4 px-6 hover:bg-zinc-800 transition-all font-bold uppercase text-[11px] tracking-[0.2em] relative overflow-hidden"
+              type="submit"
+              disabled={isAuthExecuting}
+              className="group flex items-center justify-center gap-3 bg-[#141414] text-white py-4 px-6 hover:bg-zinc-800 transition-all font-bold uppercase text-[11px] tracking-[0.2em] relative overflow-hidden disabled:opacity-50"
             >
-              <LogIn size={18} />
-              Acessar Sistema
-              <div className="absolute inset-x-0 bottom-0 h-1 bg-white opacity-20 transform translate-y-full group-hover:translate-y-0 transition-transform"></div>
+              {isAuthExecuting ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <LogIn size={18} />
+              )}
+              {authMode === 'login' ? 'Conectar ao Sistema' : 'Finalizar Registro'}
+            </button>
+          </form>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-[#141414]/10"></div>
+              <span className="text-[9px] font-bold opacity-30 uppercase">Ou continue com</span>
+              <div className="flex-1 h-px bg-[#141414]/10"></div>
+            </div>
+
+            <button 
+              onClick={handleGoogleLogin}
+              disabled={isAuthExecuting}
+              className="flex items-center justify-center gap-3 bg-white text-[#141414] border-2 border-[#141414] py-3 px-6 hover:bg-[#F2F1EF] transition-all font-bold uppercase text-[11px] tracking-[0.2em] disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+              Google Authority
             </button>
 
             <button 
-              onClick={loginWithGoogle}
-              className="flex items-center justify-center gap-3 bg-white text-[#141414] border-2 border-[#141414] py-4 px-6 hover:bg-[#F2F1EF] transition-all font-bold uppercase text-[11px] tracking-[0.2em]"
+              onClick={() => {
+                setAuthMode(authMode === 'login' ? 'register' : 'login');
+                setAuthError(null);
+              }}
+              className="text-[10px] font-bold uppercase tracking-widest text-[#141414] hover:underline"
             >
-              <UserIcon size={18} />
-              Criar minha conta
+              {authMode === 'login' ? 'Não possui uma conta? Registre-se aqui' : 'Já possui autorização? Faça login'}
             </button>
           </div>
 
-          <div className="pt-8 border-t border-[#141414]/10 flex flex-col gap-4">
+          <div className="pt-8 border-t border-[#141414]/10">
             <span className="text-[9px] opacity-40 uppercase font-bold tracking-widest leading-tight">
-              Segurança via Google Cloud Authority. Seus dados são criptografados e armazenados em infraestrutura de alta disponibilidade.
+              Acesso restrito. Protocolos de criptografia AES-256 e SSL ativo. Seus dados estão seguros na nuvem operacional.
             </span>
-            <div className="flex items-center gap-2 text-[8px] font-bold uppercase tracking-widest text-green-600">
-               <div className="w-1.5 h-1.5 bg-green-500 animate-pulse rounded-full"></div>
-               Cloud Storage Encrypted & Verified
-            </div>
           </div>
         </div>
       </div>
@@ -387,6 +552,37 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#E4E3E0] text-[#141414] flex flex-col font-sans select-none overflow-x-hidden">
+      {/* Migration Alert */}
+      {hasLocalData && (
+        <div className="bg-[#141414] text-white py-2 px-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={14} className="text-yellow-400" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em]">
+              Encontramos dados locais do seu projeto anterior. Deseja migrar para sua conta nuvem?
+            </span>
+          </div>
+          <div className="flex gap-4">
+             <button 
+              onClick={migrateLocalData}
+              disabled={isMigrating}
+              className="text-[10px] font-bold uppercase underline hover:text-yellow-400 transition-colors disabled:opacity-50"
+            >
+              {isMigrating ? "Migrando..." : "Sim, migrar dados"}
+            </button>
+            <button 
+              onClick={() => {
+                if (confirm("Isso ocultará este aviso. Seus dados locais permanecerão inalterados. Continuar?")) {
+                  setHasLocalData(false);
+                }
+              }}
+              className="text-[10px] font-bold uppercase opacity-50 hover:opacity-100"
+            >
+              Ignorar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="h-16 border-b border-[#141414] bg-white flex items-center justify-between px-8 sticky top-0 z-40 backdrop-blur-md">
         <div className="flex items-center gap-12">
