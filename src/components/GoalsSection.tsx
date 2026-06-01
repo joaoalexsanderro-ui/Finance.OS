@@ -31,7 +31,8 @@ export default function GoalsSection({ goals, onAddGoal, onDeleteGoal, onEditGoa
             <motion.div 
               key={goal.id}
               whileHover={{ backgroundColor: 'white' }}
-              className="p-4 border-b border-[#141414]/10 group transition-colors"
+              onClick={() => onEditGoal(goal)}
+              className="p-4 border-b border-[#141414]/10 group transition-colors cursor-pointer"
             >
               <div className="flex justify-between items-end mb-2">
                 <div className="flex flex-col">
@@ -46,14 +47,16 @@ export default function GoalsSection({ goals, onAddGoal, onDeleteGoal, onEditGoa
                    <span className="text-[9px] font-bold opacity-40">ALVO: {formatCurrency(goal.targetAmount)}</span>
                    <div className="flex gap-2">
                      <button 
-                       onClick={() => onEditGoal(goal)}
+                       onClick={(e) => { e.stopPropagation(); onEditGoal(goal); }}
                        className="text-blue-600 opacity-40 hover:opacity-100 transition-opacity"
+                       title="Editar meta"
                      >
                        <Pencil size={14} />
                      </button>
                      <button 
-                       onClick={() => onDeleteGoal(goal.id)}
+                       onClick={(e) => { e.stopPropagation(); onDeleteGoal(goal.id); }}
                        className="text-red-600 opacity-40 hover:opacity-100 transition-opacity"
+                       title="Excluir meta"
                      >
                        <Trash2 size={14} />
                      </button>

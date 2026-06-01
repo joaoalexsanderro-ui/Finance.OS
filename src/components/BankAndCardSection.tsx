@@ -44,6 +44,7 @@ export default function BankAndCardSection({
             <motion.div 
               key={bank.id}
               whileHover={{ backgroundColor: 'rgba(255,255,255,0.4)' }}
+              onClick={() => onEditBank(bank)}
               className="p-4 flex flex-col gap-1 cursor-pointer transition-colors group"
             >
               <div className="flex justify-between items-start">
@@ -51,11 +52,11 @@ export default function BankAndCardSection({
                   <span className="font-bold text-sm tracking-tight">{bank.name}</span>
                   <div className={`w-3 h-1 mt-1 ${bank.color} border border-black/20`}></div>
                 </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); onEditBank(bank); }} className="text-blue-600 hover:scale-110 transition-transform">
+                <div className="flex gap-2 opacity-30 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                  <button onClick={(e) => { e.stopPropagation(); onEditBank(bank); }} className="text-blue-600 hover:scale-110 transition-transform" title="Editar conta">
                     <Pencil size={12} />
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); onDeleteBank(bank.id); }} className="text-red-600 hover:scale-110 transition-transform">
+                  <button onClick={(e) => { e.stopPropagation(); onDeleteBank(bank.id); }} className="text-red-600 hover:scale-110 transition-transform" title="Excluir conta">
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -89,15 +90,17 @@ export default function BankAndCardSection({
             return (
               <motion.div 
                 key={card.id}
-                className="p-4 border-b border-white/10 last:border-b-0 group"
+                whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                onClick={() => onEditCard(card)}
+                className="p-4 border-b border-white/10 last:border-b-0 group cursor-pointer transition-colors"
               >
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-[10px] uppercase font-bold tracking-widest">{card.name}</span>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => onEditCard(card)} className="text-blue-400 hover:text-blue-300">
+                  <div className="flex gap-2 opacity-35 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); onEditCard(card); }} className="text-blue-400 hover:text-blue-300" title="Editar cartão">
                       <Pencil size={11} />
                     </button>
-                    <button onClick={() => onDeleteCard(card.id)} className="text-red-400 hover:text-red-300">
+                    <button onClick={(e) => { e.stopPropagation(); onDeleteCard(card.id); }} className="text-red-400 hover:text-red-300" title="Excluir cartão">
                       <Trash2 size={11} />
                     </button>
                   </div>
