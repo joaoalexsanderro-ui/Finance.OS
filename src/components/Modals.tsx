@@ -289,21 +289,23 @@ interface BankFormProps {
 
 export function BankForm({ onSubmit, initialData }: BankFormProps) {
   const [name, setName] = useState(initialData?.name || '');
-  const [balance, setBalance] = useState(initialData?.balance?.toString() || '');
+  const [initialBalance, setInitialBalance] = useState(
+    initialData ? (initialData.initialBalance !== undefined ? initialData.initialBalance.toString() : initialData.balance.toString()) : ''
+  );
   const [color, setColor] = useState(initialData?.color || COLORS[0]);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
-      onSubmit({ name, balance: parseFloat(balance), color });
+      onSubmit({ name, initialBalance: parseFloat(initialBalance), color });
     }} className="space-y-4">
       <div>
         <label className="block text-[10px] font-bold text-[#141414]/50 uppercase tracking-widest mb-1">Nome do Banco</label>
         <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-2 border border-[#141414] bg-white text-sm" />
       </div>
       <div>
-        <label className="block text-[10px] font-bold text-[#141414]/50 uppercase tracking-widest mb-1">Saldo</label>
-        <input required type="number" step="0.01" value={balance} onChange={e => setBalance(e.target.value)} className="w-full px-4 py-2 border border-[#141414] bg-white text-sm font-mono" />
+        <label className="block text-[10px] font-bold text-[#141414]/50 uppercase tracking-widest mb-1">Saldo Inicial</label>
+        <input required type="number" step="0.01" value={initialBalance} onChange={e => setInitialBalance(e.target.value)} className="w-full px-4 py-2 border border-[#141414] bg-white text-sm font-mono" />
       </div>
       <div>
         <label className="block text-[10px] font-bold text-[#141414]/50 uppercase tracking-widest mb-1">Cor de Identificação</label>

@@ -131,13 +131,29 @@ export default function App() {
     setEditingCard(null);
   };
 
-  const addBank = async (data: Partial<Bank>) => {
-    const newBank: Bank = {
-      id: editingBank ? editingBank.id : Math.random().toString(36).substring(7),
-      name: data.name || '',
-      balance: data.balance || 0,
-      color: data.color || 'bg-blue-500'
-    };
+  const addBank = async (data: Partial<Bank> & { initialBalance?: number }) => {
+    let newBank: Bank;
+    if (editingBank) {
+      const oldInitial = editingBank.initialBalance !== undefined ? editingBank.initialBalance : editingBank.balance;
+      const newInitial = data.initialBalance !== undefined ? data.initialBalance : (data.balance || 0);
+      const diff = newInitial - oldInitial;
+      newBank = {
+        id: editingBank.id,
+        name: data.name || '',
+        initialBalance: newInitial,
+        balance: editingBank.balance + diff,
+        color: data.color || 'bg-blue-500'
+      };
+    } else {
+      const initial = data.initialBalance !== undefined ? data.initialBalance : (data.balance || 0);
+      newBank = {
+        id: Math.random().toString(36).substring(7),
+        name: data.name || '',
+        initialBalance: initial,
+        balance: initial,
+        color: data.color || 'bg-blue-500'
+      };
+    }
     await saveBank(newBank);
     handleCloseModal();
   };

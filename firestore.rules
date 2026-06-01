@@ -26,9 +26,10 @@ service cloud.firestore {
     // Entity Validations
     function isValidBank(data) {
       return data.keys().hasAll(['name', 'balance', 'color']) &&
-             data.keys().size() == 3 &&
+             (data.keys().size() == 3 || (data.keys().size() == 4 && 'initialBalance' in data)) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.balance is number &&
+             (!('initialBalance' in data) || data.initialBalance is number) &&
              data.color is string && data.color.size() <= 50;
     }
 
